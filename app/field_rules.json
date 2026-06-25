@@ -1,0 +1,11 @@
+{
+  "data_science": ["python", "machine learning", "data science", "tensorflow", "pytorch", "keras", "ai", "deep learning"],
+  "web_development": ["django", "react", "full stack", "javascript", "node", "html", "css", "php", "laravel"],
+  "android_development": ["android", "kotlin", "flutter", "xml", "java", "mobile"],
+  "ios_development": ["ios", "swift", "xcode", "cocoa", "objective-c"],
+  "uiux_design": ["ux", "ui", "figma", "adobe xd", "wireframe", "prototyping"],
+  "finance": ["finance", "accounting", "bank", "valuation", "audit"],
+  "marketing": ["marketing", "seo", "ads", "social media", "branding"],
+  "project_management": ["project management", "scrum", "pmp", "jira", "kanban"],
+  "human_resources": ["human resource", "hr", "recruitment", "talent acquisition"]
+}
