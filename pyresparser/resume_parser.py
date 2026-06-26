@@ -51,6 +51,9 @@ class ResumeParser:
     def get_extracted_data(self):
         return self.__details
 
+    def get_raw_text(self):
+        return self.__text_raw
+
     def __get_basic_details(self):
         entities_custom = utils.extract_entities_wih_custom_model(self.__custom_doc)
         entities_raw = utils.extract_entity_sections_grad(self.__text_raw)

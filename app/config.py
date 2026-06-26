@@ -31,3 +31,16 @@ def get_field_rules() -> dict:
     rules_path = Path(__file__).with_name('field_rules.json')
     with rules_path.open('r', encoding='utf-8') as fh:
         return json.load(fh)
+
+
+def get_extractor_provider() -> str:
+    """Returns the extractor provider: 'custom_rule', 'pyresparser', 'gemini', 'ollama'"""
+    return get_env('EXTRACTOR_PROVIDER', 'custom_rule')
+
+
+def get_max_upload_size_mb() -> float:
+    """Returns the maximum upload size limit in MB."""
+    try:
+        return float(get_env('MAX_UPLOAD_SIZE_MB', '5.0'))
+    except ValueError:
+        return 5.0
