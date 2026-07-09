@@ -72,3 +72,6 @@ class ResumeAnalysisResult:
     recommendation: RecommendationResult
     raw_text: Optional[str] = None
     candidate_level: Optional[str] = None
+    provider_used: str = "custom_rule"
+    fallback_used: bool = False
+    confidence_score: float = 0.0

@@ -39,8 +39,8 @@ def get_field_rules() -> dict:
 
 
 def get_extractor_provider() -> str:
-    """Returns the extractor provider: 'custom_rule', 'pyresparser', 'gemini', 'ollama'"""
-    return get_env('EXTRACTOR_PROVIDER', 'custom_rule')
+    """Returns the active V1 extractor strategy: 'auto', 'custom_rule', or 'gemini'."""
+    return get_env('EXTRACTOR_PROVIDER', 'auto')
 
 
 def get_max_upload_size_mb() -> float:

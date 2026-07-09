@@ -1,107 +1,61 @@
-# AI Resume Analyzer
+# AI Resume Analyzer Backend – V1
 
-AI Resume Analyzer is an AI-assisted resume analysis and recommendation system built with Python and Streamlit. It helps users evaluate their resumes, identify skill gaps, receive role-based recommendations, and explore learning resources.
+This backend provides the V1 runtime for the AI Resume Analyzer. It accepts uploaded resumes, validates them, extracts structured content through a selected parser provider, normalizes skills, scores ATS-readiness, and returns recommendations to the UI.
 
-> Current status: Demo / prototype project for learning, portfolio, and academic presentation.
-> Future goal: Production-ready AI resume intelligence platform.
+## V1 Scope
+The current V1 release is intentionally focused on a credible, maintainable MVP:
+- upload and validation for PDF and DOCX files
+- text extraction from the uploaded document
+- one selected extractor per analysis run
+- skill normalization through the knowledge layer
+- ATS-style scoring and recommendation generation
+- FastAPI response shaping for the frontend
 
-## 1. Project Overview
-This project focuses on solving a practical problem in career development and recruitment:
-- Many job seekers do not know how strong their resume is.
-- Recruiters and candidates need faster, structured resume insights.
-- Resume improvement becomes easier when users receive targeted skill and learning suggestions.
+## Runtime Architecture
+The active V1 flow is:
+1. receive an uploaded resume
+2. validate the file
+3. extract raw text
+4. run the selected extractor (custom rule-based parser by default, Gemini when explicitly selected)
+5. normalize and enrich the parsed data
+6. run ATS scoring and recommendation generation
+7. return the analysis payload
 
-## 2. Problem Statement
-Manual resume review is time-consuming, inconsistent, and difficult for candidates who need quick, actionable feedback. This project addresses that gap by using NLP-based resume parsing and recommendation logic to provide a structured analysis of a candidate’s profile.
+## Core Modules
+- app/api.py: FastAPI routes and response mapping
+- app/services/analysis_service.py: orchestration of the runtime pipeline
+- app/parser/custom_parser.py: default local extractor
+- app/parser/llm_extractor.py: optional Gemini extractor
+- app/parser/text_extraction.py: raw text extraction from PDF and DOCX
+- app/validation/validator.py: file validation and safety checks
+- app/knowledge/repository.py: skill normalization and unknown-skill logging
+- app/ats/engine.py: ATS scoring
+- app/recommendation/engine.py: recommendation generation
 
-## 3. Key Use Cases
-- Resume upload and analysis
-- Skill extraction from resumes
-- Career field recommendation
-- Resume quality scoring
-- Learning course suggestions
-- Feedback and analytics for improvement
+## Environment Variables
+The backend reads configuration from environment variables and a local .env file.
 
-## 4. What This Project Solves
-The system helps users:
-- Understand their current resume content
-- Identify missing or weak areas in their profile
-- Discover relevant skills to improve their chances
-- Receive better guidance for career growth
+Common settings:
+- EXTRACTOR_PROVIDER=auto or custom_rule or gemini
+- GEMINI_API_KEY=your key when Gemini is selected
+- MAX_UPLOAD_SIZE_MB=5.0
 
-## 5. Current Features
-- PDF resume upload
-- Basic resume parsing
-- Skill and experience extraction
-- Resume score feedback
-- Course recommendation based on detected domain
-- User feedback collection and analytics dashboard
+## Local Setup
+```bash
+cd Backend
+pip install -r requirements.txt
+python main.py
+```
 
-## 6. Architecture Summary
-The project is designed in three main parts:
-1. Frontend interface using Streamlit
-2. Resume parsing and NLP logic using Python modules
-3. Data storage and analytics using MySQL
+The API will be available at http://localhost:8000/docs.
 
-## 7. Strengths
-- Practical and real-world use case
-- Easy to demonstrate in portfolios and academic presentations
-- Good foundation for AI/NLP-based career technology
-- Combines parsing, recommendations, and analytics in one app
+## Notes on V1
+- Ollama is not part of the active V1 runtime path.
+- V1 uses one selected extractor per run rather than a multi-provider orchestration flow.
+- ATS and recommendations consume the normalized results produced by the selected extractor.
 
-## 8. Demo vs Production Gaps
-This project is currently a functional demo, but it still has several production gaps:
-
-### Demo-level features
-- Resume upload and analysis flow works for presentation purposes
-- Basic NLP parsing and score feedback are implemented
-- Skill recommendations and course suggestions are available
-
-### Production-level gaps
-- Rule-based recommendations can be inaccurate for varied resume formats
-- Local file storage and local database usage are not scalable
-- Hard-coded or environment-dependent credentials need stronger security
-- Logging, monitoring, testing, and error handling are still limited
-- The architecture should be modularized for long-term maintenance
-- Deployment is not yet optimized for real users or cloud usage
-
-## 9. Future Improvements Plan
-The next few weeks should focus on the following upgrade path:
-
-### Short-term improvements
-- Refactor the app into service, data-access, and UI layers
-- Replace hard-coded settings with environment variables
-- Add safer file handling and input validation
-- Improve README and case-study documentation
-
-### Medium-term improvements
-- Improve NLP extraction and scoring accuracy
-- Add better field classification logic using structured config files
-- Introduce tests, logging, and graceful error handling
-- Move storage and database handling toward a scalable setup
-
-### Long-term production goals
-- Deploy as a secure web application or API
-- Add cloud storage, analytics, and user authentication
-- Improve resume quality scoring and job matching
-- Build a stronger AI recommendation engine for real-world use
-
-## 10. Professional Presentation Angle
-This project can be presented as:
-> An AI-assisted resume intelligence system that helps candidates understand their profile quality, identify skill gaps, and receive relevant career recommendations.
-
-For academic or portfolio presentation, it is best to clearly state that the current version is a demo prototype, while the production roadmap focuses on scalability, robustness, and real-world deployment.
-
-## 11. Case Study Style Summary
-A strong professional case study should highlight:
-- the real problem being solved
-- the system design and workflow
-- the value delivered to users
-- limitations and future opportunities
-- why the solution is relevant for AI, recruitment, and career support
-
-## 12. Conclusion
-This project has strong academic and portfolio value. It currently works as a meaningful demo, but the next phase should focus on turning it into a more reliable, scalable, and production-ready AI solution.
-
-This README is intentionally written to reflect the current demo stage and the planned production roadmap for the next few weeks.
+## Known Limitations
+- OCR for scanned resumes is not part of V1.
+- The runtime remains single-provider per run.
+- The knowledge layer is currently focused on skill normalization and unknown-skill tracking.
 

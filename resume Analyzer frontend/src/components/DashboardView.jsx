@@ -54,6 +54,9 @@ export default function DashboardView() {
   const breakdown = atsData?.breakdown ?? [];
   const strengths = atsData?.strengths ?? [];
   const improvements = atsData?.improvements ?? [];
+  const providerUsed = analysisData?.provider_used || 'auto';
+  const fallbackUsed = Boolean(analysisData?.fallback_used);
+  const confidenceScore = typeof analysisData?.confidence_score === 'number' ? analysisData.confidence_score : 0;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -91,6 +94,10 @@ export default function DashboardView() {
         <div className={styles.metaBadge}>
           <TrendingUp size={16} />
           <span>Overall Match Rank: {getRankLabel(score)}</span>
+        </div>
+        <div className={styles.metaBadge}>
+          <Cpu size={16} />
+          <span>{providerUsed}{fallbackUsed ? ' · fallback used' : ''}</span>
         </div>
       </header>
 

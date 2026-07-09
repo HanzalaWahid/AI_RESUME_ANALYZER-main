@@ -38,7 +38,7 @@ async function apiFetch(path, options = {}) {
 /**
  * Analyze a resume file.
  * @param {File} file - The PDF or DOCX file to analyze.
- * @param {string} provider - Extraction provider: 'custom_rule' | 'gemini' | 'ollama'
+ * @param {string} provider - Extraction provider: 'auto' | 'custom_rule' | 'gemini'
  * @returns {Promise<AnalysisResponse>}
  */
 export async function analyzeResume(file, provider = 'custom_rule') {

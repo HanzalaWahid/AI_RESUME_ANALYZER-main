@@ -145,6 +145,8 @@ class AnalysisResponse(BaseModel):
     success: bool
     filename: str
     provider_used: str
+    fallback_used: bool = False
+    confidence_score: float = 0.0
     personal_info: PersonalInfo
     skills: List[str]
     technical_skills: List[str] = []
@@ -291,7 +293,7 @@ async def health_check():
     return HealthResponse(
         status="operational",
         version="2.0.0",
-        providers=["custom_rule", "gemini", "ollama"],
+        providers=["auto", "custom_rule", "gemini"],
     )
 
 
@@ -303,7 +305,7 @@ async def health_check():
 )
 async def analyze_resume(
     file: UploadFile = File(..., description="Resume file (PDF or DOCX)"),
-    provider: str = Form(default="custom_rule", description="Extraction provider: custom_rule | gemini | ollama"),
+    provider: str = Form(default="auto", description="Extraction provider: auto | custom_rule | gemini"),
 ):
     """
     Upload a resume file and receive:
@@ -385,7 +387,9 @@ async def analyze_resume(
         return AnalysisResponse(
             success=True,
             filename=filename,
-            provider_used=provider,
+            provider_used=result.provider_used,
+            fallback_used=result.fallback_used,
+            confidence_score=result.confidence_score,
             personal_info=personal_info,
             skills=rd.skills,
             technical_skills=rd.technical_skills,

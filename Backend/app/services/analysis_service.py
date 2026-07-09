@@ -10,8 +10,7 @@ from ..config import get_extractor_provider, get_max_upload_size_mb
 from ..knowledge.repository import KnowledgeRepository
 from ..models import ATSResult, RecommendationResult, ResumeAnalysisResult, ResumeData
 from ..parser.custom_parser import CustomRuleBasedExtractor
-from ..parser.llm_extractor import GeminiExtractor, OllamaExtractor
-from ..parser.pyresparser_adapter import PyresparserExtractor
+from ..parser.llm_extractor import GeminiExtractor
 from ..recommendation.engine import RuleBasedRecommendationEngine
 from ..validation.validator import validate_resume
 
@@ -45,11 +44,12 @@ SKILL_CATEGORY_KEYWORDS: Dict[str, List[str]] = {
 
 
 class ResumeAnalysisService:
-    """Service layer that orchestrates resume validation, extraction, ATS scoring, and recommendations."""
+    """V1 service layer for validation, selected extractor execution, knowledge normalization, ATS scoring, and recommendations."""
 
     def __init__(self, provider: str | None = None) -> None:
-        self.provider = provider or get_extractor_provider()
+        self.provider = (provider or get_extractor_provider() or "auto").lower()
         self.extractor = self._get_extractor(self.provider)
+        self.fallback_extractor = None
         self.ats_engine = RuleBasedATSScorer()
         self.recommendation_engine = RuleBasedRecommendationEngine()
         self.knowledge_repo = KnowledgeRepository()
@@ -57,22 +57,15 @@ class ResumeAnalysisService:
     def _get_extractor(self, provider: str) -> Any:
         provider = provider.lower()
         if provider == "gemini":
-            try:
-                return GeminiExtractor()
-            except Exception as e:
-                logger.warning("Failed to initialize GeminiExtractor: %s. Falling back to CustomRuleBasedExtractor.", e)
-                return CustomRuleBasedExtractor()
-        elif provider == "ollama":
-            try:
-                return OllamaExtractor()
-            except Exception as e:
-                logger.warning("Failed to initialize OllamaExtractor: %s. Falling back to CustomRuleBasedExtractor.", e)
-                return CustomRuleBasedExtractor()
-        elif provider == "pyresparser":
-            return PyresparserExtractor()
-        
-        # Default fallback is our custom rule-based extractor
+            return self._build_gemini_extractor()
         return CustomRuleBasedExtractor()
+
+    def _build_gemini_extractor(self) -> Any:
+        try:
+            return GeminiExtractor()
+        except Exception as exc:
+            logger.warning("Gemini extractor is unavailable in V1 runtime: %s", exc)
+            return None
 
     def validate_file(self, resume_path: Path) -> tuple[bool, list[str]]:
         """Validate the resume file size, signature, and integrity before processing."""
@@ -80,10 +73,19 @@ class ResumeAnalysisService:
         return validate_resume(resume_path, max_size)
 
     def analyze_resume(self, resume_path: Path) -> ResumeAnalysisResult:
-        # 1. Extraction
+        provider_used = self.provider
+        fallback_used = False
+        confidence_score = 0.0
+
+        if self.provider == "gemini":
+            provider_used = "gemini"
+        else:
+            provider_used = "custom_rule"
+
         extracted = self.extractor.extract(resume_path)
         parsed_data = extracted.get("parsed_data", {}) or {}
         raw_text = extracted.get("raw_text", "")
+        confidence_score = self._score_extraction_quality(parsed_data, raw_text)
 
         parsed_data = self._enrich_parsed_data(parsed_data, raw_text)
 
@@ -102,11 +104,9 @@ class ResumeAnalysisService:
                 "category": self._categorize_skill(resolved),
                 "confidence": self._skill_confidence(skill),
             })
-            # Log unrecognized skills for system review
             if not self.knowledge_repo.is_known_skill(skill):
                 self.knowledge_repo.log_unknown_skill(skill)
 
-        # Update parsed data skills list with normalized names
         parsed_data["skills"] = self._unique_preserve_order(resolved_skills)
         parsed_data["normalized_skill_map"] = normalized_skill_map
         parsed_data["skill_categories"] = self._group_skills(parsed_data["skills"])
@@ -119,13 +119,9 @@ class ResumeAnalysisService:
             if skill.lower() not in {s.lower() for s in parsed_data["soft_skills"]}
         ]
 
-        # 3. ATS Scoring
         ats_payload = self.ats_engine.score(parsed_data, raw_text)
-        
-        # 4. Career Field Recommendation
         recommendation_payload = self.recommendation_engine.recommend(parsed_data, raw_text)
 
-        # 5. Populate Data Transfer Models
         resume_data = ResumeData(
             name=parsed_data.get("name"),
             professional_title=parsed_data.get("professional_title") or parsed_data.get("designation"),
@@ -191,7 +187,98 @@ class ResumeAnalysisService:
             recommendation=recommendation_result,
             raw_text=raw_text,
             candidate_level=candidate_level,
+            provider_used=provider_used,
+            fallback_used=fallback_used,
+            confidence_score=confidence_score,
         )
+
+    def _score_extraction_quality(self, parsed_data: Dict[str, Any], raw_text: str) -> float:
+        score = 0.0
+        if parsed_data.get("name"):
+            score += 0.15
+        if parsed_data.get("email"):
+            score += 0.15
+        if parsed_data.get("mobile_number"):
+            score += 0.1
+        if parsed_data.get("professional_title") or parsed_data.get("designation"):
+            score += 0.1
+        if parsed_data.get("skills"):
+            score += 0.15
+        if parsed_data.get("experience"):
+            score += 0.15
+        if parsed_data.get("education"):
+            score += 0.1
+        if raw_text and len(raw_text.strip()) > 250:
+            score += 0.1
+        return round(min(score, 1.0), 2)
+
+    def _merge_extraction_results(self, local_data: Dict[str, Any], fallback_data: Dict[str, Any]) -> Dict[str, Any]:
+        merged = dict(local_data or {})
+        if not merged:
+            return dict(fallback_data or {})
+        if not fallback_data:
+            return merged
+
+        scalar_fields = [
+            "name", "email", "mobile_number", "address", "linkedin", "github", "portfolio", "website",
+            "professional_title", "designation", "college_name", "degree", "experience", "education",
+            "summary", "objective"
+        ]
+        for field in scalar_fields:
+            local_value = merged.get(field)
+            fallback_value = fallback_data.get(field)
+            if self._is_missing(local_value) and not self._is_missing(fallback_value):
+                merged[field] = fallback_value
+            elif self._is_missing(local_value) and self._is_missing(fallback_value):
+                merged[field] = None
+
+        for field in ["skills", "company_names", "projects", "internships", "achievements", "certifications",
+                      "languages", "awards", "publications", "interests", "hobbies"]:
+            merged[field] = self._merge_list_field(merged.get(field), fallback_data.get(field))
+
+        for field in ["experiences", "education_entries", "project_details"]:
+            merged[field] = self._merge_structured_field(merged.get(field), fallback_data.get(field))
+
+        return merged
+
+    def _is_missing(self, value: Any) -> bool:
+        if value is None:
+            return True
+        if isinstance(value, str):
+            return not value.strip()
+        if isinstance(value, (list, dict, tuple)):
+            return len(value) == 0
+        return False
+
+    def _merge_list_field(self, local_values: Any, fallback_values: Any) -> List[str]:
+        merged: List[str] = []
+        seen = set()
+        for values in (local_values or [], fallback_values or []):
+            if isinstance(values, str):
+                values = [values]
+            for item in values or []:
+                cleaned = str(item).strip()
+                if not cleaned:
+                    continue
+                key = cleaned.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged.append(cleaned)
+        return merged
+
+    def _merge_structured_field(self, local_values: Any, fallback_values: Any) -> List[Dict[str, Any]]:
+        merged: List[Dict[str, Any]] = []
+        for values in (local_values or [], fallback_values or []):
+            if not isinstance(values, list):
+                continue
+            for item in values:
+                if not isinstance(item, dict):
+                    continue
+                if not item:
+                    continue
+                merged.append(item)
+        return merged
 
     def _detect_candidate_level(self, text: str) -> str:
         normalized_text = text.lower()

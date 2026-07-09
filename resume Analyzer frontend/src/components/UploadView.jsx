@@ -23,9 +23,9 @@ const PIPELINE_STAGES = [
 ];
 
 const PROVIDERS = [
+  { value: 'auto', label: 'Auto (Local + Optional Gemini)', description: 'Default V1 flow: local extraction with Gemini fallback if needed' },
   { value: 'custom_rule', label: 'Custom Rule-based Extractor', description: 'Fast offline extraction — no API key needed' },
   { value: 'gemini', label: 'Gemini LLM Extractor', description: 'Google Gemini AI — requires GEMINI_API_KEY' },
-  { value: 'ollama', label: 'Ollama Local Extractor', description: 'Local LLM via Ollama — requires Ollama server running' },
 ];
 
 export default function UploadView({ setActiveTab }) {
@@ -37,7 +37,7 @@ export default function UploadView({ setActiveTab }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [currentStage, setCurrentStage] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [provider, setProvider] = useState('custom_rule');
+  const [provider, setProvider] = useState('auto');
   const [analysisResult, setAnalysisResult] = useState(null);
 
   const fileInputRef = useRef(null);
@@ -258,6 +258,11 @@ export default function UploadView({ setActiveTab }) {
             {analysisResult.personal_info?.name && (
               <> Detected candidate: <strong>{analysisResult.personal_info.name}</strong>.</>
             )}
+          </p>
+          <p className={styles.emptyMsg}>
+            Extraction path: <strong>{analysisResult.provider_used || 'auto'}</strong>
+            {analysisResult.fallback_used ? ' · Gemini fallback used' : ''}
+            {typeof analysisResult.confidence_score === 'number' ? ` · Confidence ${Math.round(analysisResult.confidence_score * 100)}%` : ''}
           </p>
 
           <div className={styles.successStats}>
