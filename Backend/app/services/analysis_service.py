@@ -49,7 +49,6 @@ class ResumeAnalysisService:
     def __init__(self, provider: str | None = None) -> None:
         self.provider = (provider or get_extractor_provider() or "auto").lower()
         self.extractor = self._get_extractor(self.provider)
-        self.fallback_extractor = None
         self.ats_engine = RuleBasedATSScorer()
         self.recommendation_engine = RuleBasedRecommendationEngine()
         self.knowledge_repo = KnowledgeRepository()
@@ -73,14 +72,9 @@ class ResumeAnalysisService:
         return validate_resume(resume_path, max_size)
 
     def analyze_resume(self, resume_path: Path) -> ResumeAnalysisResult:
-        provider_used = self.provider
+        provider_used = "gemini" if self.provider == "gemini" else "custom_rule"
         fallback_used = False
         confidence_score = 0.0
-
-        if self.provider == "gemini":
-            provider_used = "gemini"
-        else:
-            provider_used = "custom_rule"
 
         extracted = self.extractor.extract(resume_path)
         parsed_data = extracted.get("parsed_data", {}) or {}
@@ -211,74 +205,6 @@ class ResumeAnalysisService:
         if raw_text and len(raw_text.strip()) > 250:
             score += 0.1
         return round(min(score, 1.0), 2)
-
-    def _merge_extraction_results(self, local_data: Dict[str, Any], fallback_data: Dict[str, Any]) -> Dict[str, Any]:
-        merged = dict(local_data or {})
-        if not merged:
-            return dict(fallback_data or {})
-        if not fallback_data:
-            return merged
-
-        scalar_fields = [
-            "name", "email", "mobile_number", "address", "linkedin", "github", "portfolio", "website",
-            "professional_title", "designation", "college_name", "degree", "experience", "education",
-            "summary", "objective"
-        ]
-        for field in scalar_fields:
-            local_value = merged.get(field)
-            fallback_value = fallback_data.get(field)
-            if self._is_missing(local_value) and not self._is_missing(fallback_value):
-                merged[field] = fallback_value
-            elif self._is_missing(local_value) and self._is_missing(fallback_value):
-                merged[field] = None
-
-        for field in ["skills", "company_names", "projects", "internships", "achievements", "certifications",
-                      "languages", "awards", "publications", "interests", "hobbies"]:
-            merged[field] = self._merge_list_field(merged.get(field), fallback_data.get(field))
-
-        for field in ["experiences", "education_entries", "project_details"]:
-            merged[field] = self._merge_structured_field(merged.get(field), fallback_data.get(field))
-
-        return merged
-
-    def _is_missing(self, value: Any) -> bool:
-        if value is None:
-            return True
-        if isinstance(value, str):
-            return not value.strip()
-        if isinstance(value, (list, dict, tuple)):
-            return len(value) == 0
-        return False
-
-    def _merge_list_field(self, local_values: Any, fallback_values: Any) -> List[str]:
-        merged: List[str] = []
-        seen = set()
-        for values in (local_values or [], fallback_values or []):
-            if isinstance(values, str):
-                values = [values]
-            for item in values or []:
-                cleaned = str(item).strip()
-                if not cleaned:
-                    continue
-                key = cleaned.lower()
-                if key in seen:
-                    continue
-                seen.add(key)
-                merged.append(cleaned)
-        return merged
-
-    def _merge_structured_field(self, local_values: Any, fallback_values: Any) -> List[Dict[str, Any]]:
-        merged: List[Dict[str, Any]] = []
-        for values in (local_values or [], fallback_values or []):
-            if not isinstance(values, list):
-                continue
-            for item in values:
-                if not isinstance(item, dict):
-                    continue
-                if not item:
-                    continue
-                merged.append(item)
-        return merged
 
     def _detect_candidate_level(self, text: str) -> str:
         normalized_text = text.lower()

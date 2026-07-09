@@ -37,40 +37,14 @@ class V1OrchestrationTests(unittest.TestCase):
         self.assertLess(weak_score, 0.7)
         self.assertGreaterEqual(strong_score, 0.7)
 
-    def test_merge_prefers_non_empty_values_from_fallback(self) -> None:
-        local = {
-            "name": "Jane Doe",
-            "email": None,
-            "skills": ["Python"],
-            "experience": "",
-            "education": "",
-        }
-        fallback = {
-            "name": "",
-            "email": "jane@example.com",
-            "skills": ["FastAPI", "Docker"],
-            "experience": "Senior Software Engineer",
-            "education": "BS Computer Science",
-        }
-
-        merged = self.service._merge_extraction_results(local, fallback)
-
-        self.assertEqual(merged["email"], "jane@example.com")
-        self.assertIn("FastAPI", merged["skills"])
-        self.assertEqual(merged["experience"], "Senior Software Engineer")
-        self.assertEqual(merged["education"], "BS Computer Science")
-
     def test_runtime_stays_single_provider_for_v1(self) -> None:
         service = ResumeAnalysisService(provider="custom_rule")
         service.extractor = DummyExtractor(parsed_data={"name": "Jane Doe"}, raw_text="Jane Doe")
-        fallback_extractor = DummyExtractor(parsed_data={"name": "Fallback"}, raw_text="Fallback")
-        service.fallback_extractor = fallback_extractor
 
         result = service.analyze_resume(Path("dummy.pdf"))
 
         self.assertEqual(result.provider_used, "custom_rule")
         self.assertFalse(result.fallback_used)
-        self.assertEqual(fallback_extractor.calls, [])
 
     def test_analysis_response_exposes_runtime_metadata(self) -> None:
         response = AnalysisResponse(

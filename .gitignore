@@ -19,3 +19,10 @@ dist/
 # OS/editor
 .DS_Store
 .vscode/
+
+# Uploaded resume files (local dev artifacts)
+Backend/app/Uploaded_Resume/*
+!Backend/app/Uploaded_Resume/.gitkeep
+
+# Logs
+*.log

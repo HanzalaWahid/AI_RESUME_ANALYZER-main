@@ -64,3 +64,5 @@ Ollama is excluded from V1 to keep the architecture simple, predictable, and eas
 - The extraction path is single-provider per run.
 - The system is not yet a full production provider router.
 - The knowledge layer is limited to normalization and unknown-skill logging.
+
+

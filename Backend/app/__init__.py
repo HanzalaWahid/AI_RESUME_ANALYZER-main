@@ -13,7 +13,6 @@ from .models import ATSResult, RecommendationResult, ResumeAnalysisResult, Resum
 from .parser import (
     CustomRuleBasedExtractor,
     GeminiExtractor,
-    PyresparserExtractor,
     ResumeExtractor,
 )
 from .recommendation import RecommendationEngine, RuleBasedRecommendationEngine
@@ -33,7 +32,6 @@ __all__ = [
     "ResumeExtractor",
     "CustomRuleBasedExtractor",
     "GeminiExtractor",
-    "PyresparserExtractor",
     # Recommendation
     "RecommendationEngine",
     "RuleBasedRecommendationEngine",

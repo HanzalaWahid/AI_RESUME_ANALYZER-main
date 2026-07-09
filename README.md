@@ -103,7 +103,7 @@ The API will be available at:
 ### Frontend
 ```bash
 cd "resume Analyzer frontend"
-npm install
+cc
 npm run dev
 ```
 

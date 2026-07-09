@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from pyresparser.resume_parser import ResumeParser
-
-from .interfaces import ResumeExtractor
+from app.parser.interfaces import ResumeExtractor
 
 logger = logging.getLogger(__name__)
 

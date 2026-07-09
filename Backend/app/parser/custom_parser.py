@@ -27,7 +27,6 @@ class CustomRuleBasedExtractor(ResumeExtractor):
         except Exception as e:
             logger.warning("Failed to load SpaCy model 'en_core_web_sm'. Trying a fallback load: %s", e)
             try:
-                import spacy
                 self.nlp = spacy.load("en_core_web_sm")
             except Exception:
                 self.nlp = None
